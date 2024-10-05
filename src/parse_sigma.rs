@@ -5,8 +5,10 @@ pub mod sigma {
     use serde::{Deserialize, Serialize};
     use serde_json::{json, Value};
     use std::collections::HashMap;
+    use std::fmt;
     use std::fs::File;
     use std::io::Read;
+    use walkdir::WalkDir;
 
     #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
     pub struct LogSource {
@@ -17,9 +19,11 @@ pub mod sigma {
 
     #[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
     pub enum SigmaStatus {
-        Test,
         Stable,
-        // TODO complete
+        Test,
+        Experimental,
+        Deprecated,
+        Unsupported,
     }
 
     impl Serialize for SigmaStatus {
@@ -30,6 +34,9 @@ pub mod sigma {
             match self {
                 SigmaStatus::Test => serializer.serialize_str("test"),
                 SigmaStatus::Stable => serializer.serialize_str("stable"),
+                SigmaStatus::Experimental => serializer.serialize_str("experimental"),
+                SigmaStatus::Deprecated => serializer.serialize_str("deprecated"),
+                SigmaStatus::Unsupported => serializer.serialize_str("unsupported"),
             }
         }
     }
@@ -42,6 +49,7 @@ pub mod sigma {
         Low,
         Informational,
     }
+
     #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
     pub struct SigmaDetecton {
         condition: String,
@@ -63,26 +71,72 @@ pub mod sigma {
         detection: SigmaDetecton,
     }
 
-    impl SigmaRule {
-        pub fn parse_rule_from_file(path: String) -> SigmaRule {
-            // Open the YAML file
-            let mut file = File::open(path).unwrap();
-            let mut contents = String::new();
-            file.read_to_string(&mut contents).unwrap();
+    #[derive(Debug, PartialEq, Eq)]
+    pub enum ParsingError {
+        InvalidFile,
+        InvalidAttribute,
+    }
 
-            serde_yaml::from_str::<SigmaRule>(&contents).unwrap()
+    impl SigmaRule {
+        pub fn parse_rule_from_file(path: String) -> Result<SigmaRule, ParsingError> {
+            // Open the YAML file
+            let file = File::open(path);
+            let mut contents = String::new();
+
+            match file {
+                Ok(mut data) => {
+                    let _ = data.read_to_string(&mut contents);
+                }
+                Err(_) => return Err(ParsingError::InvalidAttribute),
+            }
+
+            match serde_yaml::from_str::<SigmaRule>(&contents) {
+                Ok(val) => Ok(val),
+                Err(_) => Err(ParsingError::InvalidAttribute),
+            }
+        }
+
+        pub fn load_rule_from_folder(path: String) -> Vec<SigmaRule> {
+            let mut vec = Vec::new();
+            for entry in WalkDir::new(&path).into_iter() {
+                match entry {
+                    Ok(entry) => {
+                        match SigmaRule::parse_rule_from_file(
+                            entry.path().to_string_lossy().into_owned(),
+                        ) {
+                            Ok(rule) => vec.push(rule),
+                            Err(ParsingError::InvalidAttribute) => {
+                                println!("Error parsing the file {path}")
+                            }
+                            Err(ParsingError::InvalidFile) => {
+                                println!("Error reading the file")
+                            }
+                            Err(_) => println!("Unknwoned error"),
+                        };
+                    }
+                    Err(e) => println!("Error: {}", e),
+                }
+            }
+            vec
+        }
+    }
+
+    impl fmt::Display for SigmaRule {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(f, "{}", self.title)
         }
     }
 
     #[test]
     #[should_panic]
     fn invalid_path() {
-        SigmaRule::parse_rule_from_file("azeaze".to_string());
+        SigmaRule::parse_rule_from_file("azeaze".to_string()).unwrap();
     }
 
     #[test]
     fn parse_from_file() {
-        let rule: SigmaRule = SigmaRule::parse_rule_from_file("tests/test_rule.yml".to_string());
+        let rule: SigmaRule =
+            SigmaRule::parse_rule_from_file("tests/test_rule.yml".to_string()).unwrap();
 
         assert_eq!(rule.title, "test rule".to_string());
         assert_eq!(rule.status, SigmaStatus::Test);
@@ -142,6 +196,9 @@ pub mod custom_deserialize {
                 match value {
                     "test" => Ok(SigmaStatus::Test),
                     "stable" => Ok(SigmaStatus::Stable),
+                    "experimental" => Ok(SigmaStatus::Experimental),
+                    "deprecated" => Ok(SigmaStatus::Deprecated),
+                    "unsupported" => Ok(SigmaStatus::Unsupported),
                     _ => Err(de::Error::custom(format!("Invalid status: {}", value))),
                 }
             }
