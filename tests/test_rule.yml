@@ -19,10 +19,17 @@ logsource:
     product: windows
     category: dns_query
 detection:
-    selection:
-        Image|startswith: 'C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_'
-        Image|endswith: '\AppInstaller.exe'
-    condition: selection
+    selection1:
+        process: "toto"
+        file: "tata"
+    selection2:
+        image:
+            - "tutu"
+            - "tyty"
+    keywords:
+        - "titi"
+        - "tete"
+    condition: selection1 or selection1 or keywords
 falsepositives:
     - Unknown
 level: medium

@@ -1,7 +1,10 @@
+extern crate serde_json;
 extern crate serde_yaml;
 pub mod sigma {
     use super::custom_deserialize::{deserialize_level, deserialize_status};
     use serde::{Deserialize, Serialize};
+    use serde_json::{json, Value};
+    use std::collections::HashMap;
     use std::fs::File;
     use std::io::Read;
 
@@ -39,9 +42,12 @@ pub mod sigma {
         Low,
         Informational,
     }
-    #[derive(Serialize, Deserialize, Debug)]
-    struct SigmaDetecton {
+    #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+    pub struct SigmaDetecton {
         condition: String,
+        keywords: Option<Vec<String>>,
+        #[serde(flatten)]
+        selections: Option<HashMap<String, Value>>,
     }
 
     #[derive(Serialize, Deserialize, Debug)]
@@ -97,6 +103,19 @@ pub mod sigma {
                 service: None
             }
         );
+
+        let mut sections = HashMap::new();
+        sections.insert(
+            "selection1".to_string(),
+            json!({"process": "toto", "file": "tata"}),
+        );
+        sections.insert("selection2".to_string(), json!({"image": ["tutu", "tyty"]}));
+        let detection = SigmaDetecton {
+            condition: "selection1 or selection1 or keywords".to_string(),
+            keywords: Some(vec!["titi".to_string(), "tete".to_string()]),
+            selections: Some(sections),
+        };
+        assert_eq!(rule.detection, detection);
     }
 }
 
