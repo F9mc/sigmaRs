@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::Read;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct SentinelLogSource {
     value: String,
     service: Option<String>,
@@ -64,6 +64,41 @@ impl SentinelLogSource {
 
         sources
     }
+
+    pub fn get_sources(
+        sources: &Vec<SentinelLogSource>,
+        category: Option<String>,
+        product: Option<String>,
+        service: Option<String>,
+    ) -> Vec<String> {
+        let mut filtered_sources = sources.clone();
+        let mut filtered_iter_source = filtered_sources.iter();
+
+        filtered_iter_source
+            .filter(|s| {
+                if category != None {
+                    s.category == category
+                } else {
+                    true
+                }
+            })
+            .filter(|s| {
+                if product != None {
+                    s.product == product
+                } else {
+                    true
+                }
+            })
+            .filter(|s| {
+                if service != None {
+                    s.service == service
+                } else {
+                    true
+                }
+            })
+            .map(|s| s.value.clone())
+            .collect()
+    }
 }
 
 pub struct SentinelQuery {
@@ -89,12 +124,9 @@ impl SentinelQuery {
     pub fn comment(&mut self, comment: &str) {
         self.query = format!("// {}\n{}", comment, self.query)
     }
-    pub fn from(
-        &mut self,
-        service: &Option<String>,
-        category: &Option<String>,
-        product: &Option<String>,
-    ) {
+
+    pub fn from(&mut self, source: &str) {
+        self.query = String::from(source)
     }
 
     pub fn add_where(&mut self) {
@@ -105,7 +137,7 @@ impl SentinelQuery {
         todo!()
     }
 
-    pub fn join(&mut self) {
+    pub fn join(first: &SentinelQuery, second: &SentinelQuery) -> SentinelQuery {
         todo!()
     }
 }
@@ -120,10 +152,21 @@ mod test {
     }
 
     #[test]
-    fn test_from() {
+    fn test_comment() {
         let mut query = SentinelQuery::new();
         query.comment("This is a test comment");
         assert_eq!(query.query, "// This is a test comment\n".to_string());
+    }
+
+    #[test]
+    fn test_source() {
+        let mut query = SentinelQuery::new();
+        query.from("CommonSecurity");
+        query.comment("This is a test comment");
+        assert_eq!(
+            query.query,
+            "// This is a test comment\nCommonSecurity".to_string()
+        );
     }
 
     #[test]
@@ -133,23 +176,36 @@ mod test {
                 .unwrap();
         assert_eq!(
             sources,
-            vec![SentinelLogSource {
-                category: None,
-                service: None,
-                product: Some("windows".to_string()),
-                value: "windowsEvent".to_string(),
-            }]
+            vec![
+                SentinelLogSource {
+                    category: None,
+                    service: None,
+                    product: Some("windows".to_string()),
+                    value: "windowsEvent".to_string(),
+                },
+                SentinelLogSource {
+                    category: Some("firewall".to_string()),
+                    service: None,
+                    product: Some("zscaler".to_string()),
+                    value: "CommonSecurity\n Where DeviceVendor == 'Zscaler'".to_string(),
+                }
+            ]
         );
-    }
 
-    #[test]
-    fn test_source() {
-        let mut query = SentinelQuery::new();
-        query.from(&Some("CommonSeciruty".to_string()), &None, &None);
-        query.comment("This is a test comment");
         assert_eq!(
-            query.query,
-            "// This is a test comment\nCommonSeciruty".to_string()
+            SentinelLogSource::get_sources(&sources, None, Some("windows".to_string()), None),
+            vec!["windowsEvent".to_string()]
+        );
+        assert_eq!(
+            SentinelLogSource::get_sources(&sources, None, None, None),
+            vec![
+                "windowsEvent".to_string(),
+                "CommonSecurity\n Where DeviceVendor == 'Zscaler'".to_string()
+            ]
+        );
+        assert_eq!(
+            SentinelLogSource::get_sources(&sources, Some("firewall".to_string()), None, None),
+            vec!["CommonSecurity\n Where DeviceVendor == 'Zscaler'".to_string()]
         );
     }
 }

@@ -141,11 +141,6 @@ impl SigmaRule {
 
     pub fn to_sentinel_query(&self) -> SentinelQuery {
         let mut query = SentinelQuery::new();
-        query.from(
-            &self.logsource.service,
-            &self.logsource.category,
-            &self.logsource.product,
-        );
 
         query.comment(&self.description);
         query

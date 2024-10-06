@@ -7,3 +7,8 @@
 windowsEventLogs:
     value: "windowsEvent"
     product: "windows"
+
+Zscaler:
+    value: "CommonSecurity\n Where DeviceVendor == 'Zscaler'"
+    product: "zscaler"
+    category: "firewall"
