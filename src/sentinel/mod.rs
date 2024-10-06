@@ -2,8 +2,6 @@ extern crate serde_json;
 extern crate serde_yaml;
 use crate::custom_error::ParsingError;
 use serde::{Deserialize, Serialize};
-use std::fs::File;
-use std::io::Read;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct SentinelLogSource {
@@ -71,8 +69,8 @@ impl SentinelLogSource {
         product: Option<String>,
         service: Option<String>,
     ) -> Vec<String> {
-        let mut filtered_sources = sources.clone();
-        let mut filtered_iter_source = filtered_sources.iter();
+        let filtered_sources = sources.clone();
+        let filtered_iter_source = filtered_sources.iter();
 
         filtered_iter_source
             .filter(|s| {
