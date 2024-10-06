@@ -1,7 +1,7 @@
 extern crate serde_json;
 extern crate serde_yaml;
 use crate::custom_error::ParsingError;
-use crate::sentinel::SentinelQuery;
+use crate::sentinel::{Condition, SentinelLogSource, SentinelQuery};
 
 use custom_deserialize::{deserialize_level, deserialize_status};
 use serde::{Deserialize, Serialize};
@@ -139,8 +139,24 @@ impl SigmaRule {
         vec
     }
 
-    pub fn to_sentinel_query(&self) -> SentinelQuery {
+    pub fn to_sentinel_query(&self, sources: &Vec<SentinelLogSource>) -> SentinelQuery {
         let mut query = SentinelQuery::new();
+
+        for s in &SentinelLogSource::get_sources(
+            sources,
+            &self.logsource.category,
+            &self.logsource.product,
+            &self.logsource.service,
+        ) {
+            let mut source_query = SentinelQuery::new();
+            source_query.from(&s);
+
+            if self.detection.selections != None {
+                source_query.add_where(Condition::Or, &self.detection.selections.clone().unwrap());
+            }
+
+            query = SentinelQuery::join(&query, &source_query)
+        }
 
         query.comment(&self.description);
         query

@@ -2,6 +2,9 @@ extern crate serde_json;
 extern crate serde_yaml;
 use crate::custom_error::ParsingError;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use std::collections::HashMap;
+use std::fmt;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct SentinelLogSource {
@@ -65,31 +68,31 @@ impl SentinelLogSource {
 
     pub fn get_sources(
         sources: &Vec<SentinelLogSource>,
-        category: Option<String>,
-        product: Option<String>,
-        service: Option<String>,
+        category: &Option<String>,
+        product: &Option<String>,
+        service: &Option<String>,
     ) -> Vec<String> {
         let filtered_sources = sources.clone();
         let filtered_iter_source = filtered_sources.iter();
 
         filtered_iter_source
             .filter(|s| {
-                if category != None {
-                    s.category == category
+                if category != &None {
+                    &s.category == category
                 } else {
                     true
                 }
             })
             .filter(|s| {
-                if product != None {
-                    s.product == product
+                if product != &None {
+                    &s.product == product
                 } else {
                     true
                 }
             })
             .filter(|s| {
-                if service != None {
-                    s.service == service
+                if service != &None {
+                    &s.service == service
                 } else {
                     true
                 }
@@ -98,14 +101,13 @@ impl SentinelLogSource {
             .collect()
     }
 }
-
-pub struct SentinelQuery {
-    query: String,
-}
-
 pub enum Condition {
     And,
     Or,
+}
+
+pub struct SentinelQuery {
+    query: String,
 }
 
 impl SentinelQuery {
@@ -127,16 +129,79 @@ impl SentinelQuery {
         self.query = String::from(source)
     }
 
-    pub fn add_where(&mut self) {
-        todo!()
+    pub fn add_where(&mut self, condition: Condition, values: &HashMap<String, Value>) {
+        let mut s: String = String::from("| where");
+        let mut is_first = true;
+
+        let condition = match condition {
+            Condition::And => "and",
+            Condition::Or => "or",
+        };
+
+        for (_, conditions) in values {
+            for (k, v) in conditions.as_object().unwrap().iter() {
+                let val = match v {
+                    Value::String(s) => format!("{k} == '{s}'"),
+                    Value::Number(s) => format!("{k} == {s}"),
+                    Value::Array(a) => {
+                        format!(
+                            "({k} == '{}' {})",
+                            a[0],
+                            a.into_iter()
+                                .skip(1)
+                                .fold(String::new(), |acc, elem| format!(
+                                    "{acc} or {k} == '{elem}'"
+                                )) // TODO remove first OR
+                        )
+                    }
+                    _ => {
+                        panic!("This type of element is not supported: {v}")
+                    }
+                };
+
+                if is_first {
+                    s = format!("{s} {val}");
+                    is_first = false;
+                } else {
+                    s = format!("{s}\n  {condition} {val}");
+                }
+            }
+        }
+
+        self.query = format!("{}\n{s}", self.query);
     }
 
     pub fn extend(&mut self) {
         todo!()
     }
+    pub fn project(&mut self) {
+        todo!()
+    }
 
     pub fn join(first: &SentinelQuery, second: &SentinelQuery) -> SentinelQuery {
-        todo!()
+        if first.query == String::new() {
+            second.clone()
+        } else if second.query == String::new() {
+            first.clone()
+        } else {
+            SentinelQuery {
+                query: format!("{}\n{}", first.query, second.query),
+            }
+        }
+    }
+}
+
+impl fmt::Display for SentinelQuery {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.query)
+    }
+}
+
+impl std::clone::Clone for SentinelQuery {
+    fn clone(&self) -> SentinelQuery {
+        SentinelQuery {
+            query: self.query.clone(),
+        }
     }
 }
 
@@ -165,6 +230,10 @@ mod test {
             query.query,
             "// This is a test comment\nCommonSecurity".to_string()
         );
+
+        //TODO
+        let args = HashMap::new();
+        query.add_where(Condition::Or, &args)
     }
 
     #[test]
@@ -191,18 +260,18 @@ mod test {
         );
 
         assert_eq!(
-            SentinelLogSource::get_sources(&sources, None, Some("windows".to_string()), None),
+            SentinelLogSource::get_sources(&sources, &None, &Some("windows".to_string()), &None),
             vec!["windowsEvent".to_string()]
         );
         assert_eq!(
-            SentinelLogSource::get_sources(&sources, None, None, None),
+            SentinelLogSource::get_sources(&sources, &None, &None, &None),
             vec![
                 "windowsEvent".to_string(),
                 "CommonSecurity\n Where DeviceVendor == 'Zscaler'".to_string()
             ]
         );
         assert_eq!(
-            SentinelLogSource::get_sources(&sources, Some("firewall".to_string()), None, None),
+            SentinelLogSource::get_sources(&sources, &Some("firewall".to_string()), &None, &None),
             vec!["CommonSecurity\n Where DeviceVendor == 'Zscaler'".to_string()]
         );
     }

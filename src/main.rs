@@ -3,7 +3,7 @@ mod custom_error;
 mod sentinel;
 mod sigma;
 use argparse::{ArgumentParser, Store, StoreTrue};
-use sentinel::SentinelLogSource;
+use sentinel::{SentinelLogSource, SentinelQuery};
 use sigma::SigmaRule;
 
 fn main() {
@@ -54,6 +54,10 @@ fn main() {
             if verbose {
                 println!("Working with '{rule}'");
             }
+
+            let query: SentinelQuery = rule.to_sentinel_query(&log_sources);
+
+            println!("{}", query);
         }
     }
 }
