@@ -1,0 +1,9 @@
+# source_name
+#   value : "..." # mandatory
+#   category: "..."
+#   product: "..."
+#   service: "..."
+
+windowsEventLogs:
+    value: "windowsEvent"
+    product: "windows"
