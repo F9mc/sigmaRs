@@ -1,0 +1,87 @@
+# source_name
+#   value : "..." # mandatory
+#   category: "..."
+#   product: "..."
+#   service: "..."
+
+SigninEvents:
+  value: "SigninEvents"
+  product: "azure"
+  service: "signinlogs"
+
+AuditLogs:
+  value: "AuditLogs"
+  product: "azure"
+  service: "auditlogs"
+
+AzureActivity:
+  value: "AzureActivity"
+  product: "azure"
+  service: "activitylogs"
+
+Linux:
+  value: "Syslog\n| where SourceSystem == 'Linux'"
+  product: "linux"
+
+PaloAlto:
+  value: "CommonSecurityLog\n| where DeviceVendor == 'palo Alto'"
+  product: "paloalto"
+  category: "firewall"
+
+CheckPoint:
+  value: "CommonSecurityLog\n| where DeviceVendor == 'Check Point'"
+  product: "checkpoint"
+  category: "firewall"
+
+Fortigate:
+  value: "CommonSecurityLog\n| where DeviceVendor == 'Fortigate'"
+  product: "fortios"
+  category: "firewall"
+
+Barracuda:
+  value: "CommonSecurityLog\n| where DeviceVendor == 'Barracuda'"
+  category: "firewall"
+
+CiscoAsa:
+  value: "CommonSecurityLog\n| where DeviceVendor == 'Cisco' and DeviceProduct == 'ASA'"
+  category: "firewall"
+  product: "cisco"
+
+CiscoFirepower:
+  value: "CommonSecurityLog\n| where DeviceVendor == 'Cisco' and DeviceProduct == 'Firepower'"
+  category: "firewall"
+  product: "cisco"
+
+CiscoUmbrella:
+  value: "CommonSecurityLog\n| where DeviceVendor == 'Cisco' and DeviceProduct == 'Umbrella'"
+  category: "firewall"
+  product: "cisco"
+
+CiscoMeraki:
+  value: "CommonSecurityLog\n| where DeviceVendor == 'Cisco' and DeviceProduct == 'Meraki'"
+  category: "firewall"
+  product: "cisco"
+
+Zscaler:
+  value: "CommonSecurityLog\n| where DeviceVendor == 'Zscaler'"
+  product: "zscaler"
+  category: "firewall"
+
+windowsEventLogs:
+  value: "WindowsEvent"
+  product: "windows"
+
+SecurityEvent:
+  value: "SecurityEvent"
+  product: "windows"
+  service: "security"
+
+WindowsFirewallFire:
+  value: "WindowsFirewall"
+  product: "windows"
+  service: "firewall-as"
+
+WindowsFirewallnet:
+  value: "WindowsFirewall"
+  product: "windows"
+  service: "network_connection"

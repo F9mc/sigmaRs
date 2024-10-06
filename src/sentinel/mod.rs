@@ -15,36 +15,39 @@ pub struct SentinelLogSource {
 
 impl SentinelLogSource {
     pub fn load_conf_file(path: String) -> Result<Vec<SentinelLogSource>, ParsingError> {
-        // Open the YAML file
-        let yaml_content = std::fs::read_to_string(path).unwrap();
-
-        let yaml_value: serde_yaml::Value = serde_yaml::from_str(&yaml_content).unwrap();
-
         let mut categories: Vec<SentinelLogSource> = Vec::new();
 
-        if let Some(map) = yaml_value.as_mapping() {
-            for (key, value) in map.iter() {
-                let s = SentinelLogSource {
-                    value: value["value"].as_str().unwrap_or("").to_string(),
-                    service: value
-                        .get("service")
-                        .map(|v| v.as_str().unwrap_or("").to_string())
-                        .or_else(|| None),
-                    category: value
-                        .get("category")
-                        .map(|v| v.as_str().unwrap_or("").to_string())
-                        .or_else(|| None),
-                    product: value
-                        .get("product")
-                        .map(|v| v.as_str().unwrap_or("").to_string())
-                        .or_else(|| None),
-                };
+        match std::fs::read_to_string(path) {
+            Ok(c) => match serde_yaml::from_str::<serde_yaml::Value>(&c) {
+                Err(_) => return Err(ParsingError::InvalidAttribute),
+                Ok(yaml_value) => {
+                    if let Some(map) = yaml_value.as_mapping() {
+                        for (_, value) in map.iter() {
+                            let s = SentinelLogSource {
+                                value: value["value"].as_str().unwrap_or("").to_string(),
+                                service: value
+                                    .get("service")
+                                    .map(|v| v.as_str().unwrap_or("").to_string())
+                                    .or_else(|| None),
+                                category: value
+                                    .get("category")
+                                    .map(|v| v.as_str().unwrap_or("").to_string())
+                                    .or_else(|| None),
+                                product: value
+                                    .get("product")
+                                    .map(|v| v.as_str().unwrap_or("").to_string())
+                                    .or_else(|| None),
+                            };
 
-                categories.push(s);
-            }
+                            categories.push(s);
+                        }
+                    }
+
+                    Ok(categories)
+                }
+            },
+            Err(_) => return Err(ParsingError::InvalidFile),
         }
-
-        Ok(categories)
     }
 
     pub fn load_sources(custom_path: String) -> Vec<SentinelLogSource> {
