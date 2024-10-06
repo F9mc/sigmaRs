@@ -2,7 +2,7 @@ extern crate serde_json;
 extern crate serde_yaml;
 use crate::custom_error::ParsingError;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::fmt;
 
@@ -105,7 +105,7 @@ pub enum Condition {
     And,
     Or,
 }
-
+#[derive(Debug)]
 pub struct SentinelQuery {
     query: String,
 }
@@ -231,9 +231,16 @@ mod test {
             "// This is a test comment\nCommonSecurity".to_string()
         );
 
-        //TODO
-        let args = HashMap::new();
-        query.add_where(Condition::Or, &args)
+        let mut args: HashMap<String, Value> = HashMap::new();
+        args.insert(
+            "first".to_string(),
+            json! ({
+                "EventId":4688,
+                "User": ["user1", "user2"]
+            }),
+        );
+        query.add_where(Condition::Or, &args);
+        assert_eq!(query.query, "// This is a test comment\nCommonSecurity\n| where EventId == 4688\n  or (User == '\"user1\"'  or User == '\"user2\"')".to_string());
     }
 
     #[test]
